@@ -106,7 +106,7 @@ in
 ```mermaid
 flowchart TD
     S1["步驟 1\n放置檔案"] --> S2["步驟 2\n開啟 Power BI 報表"]
-    S2 --> S3{"根目錄是否為\nD:\PBI\PBI_finance\?"}
+    S2 --> S3{"MyDirPath 是否為\nD:\PBI\PBI_finance\mydata\?"}
     S3 -- 是，略過 --> S4["步驟 4\n套用並重新整理"]
     S3 -- 否 --> S3b["步驟 3\n修改 MyDirPath 參數"]
     S3b --> S4
@@ -128,7 +128,7 @@ flowchart TD
   fact_accounts\ ← 家庭共帳_年結2025.xlsx、家庭共帳_年結2026.xlsx
 ```
 
-> 建議將根目錄放在 D 槽（例如 `D:\PBI\PBI_finance\`）以符合預設參數設定，無需額外修改。若使用其他路徑（如 `C:\Users\你的名字\Documents\PBI\finance\`），後續需要修改參數。
+> 建議將根目錄放在 D 槽並依預設結構建立資料夾，使 `MyDirPath` 預設值為 `D:\PBI\PBI_finance\mydata\`，無需額外修改。若使用其他路徑，後續需要修改參數。
 
 ### 步驟 2：開啟 Power BI 報表
 
@@ -138,12 +138,12 @@ flowchart TD
 
 ![管理參數 - MyDirPath 設定](images/PBI_finance_PQ-00.png)
 
-若你的根目錄**不是** `D:\PBI\PBI_finance\`，需要更新參數：
+若你的 `MyDirPath` **不是** `D:\PBI\PBI_finance\mydata\`，需要更新參數：
 
 1. 在上方功能列點選「**常用**」→「**轉換資料**」→「**管理參數**」
 2. 在左側清單選取 `MyDirPath`
-3. 將「**目前的值**」修改為你本機的 `fact_accounts` 資料夾路徑  
-   例如：`C:\Users\你的名字\Documents\PBI\finance\mydata\fact_accounts\`
+3. 將「**目前的值**」修改為你本機的 `mydata` 資料夾路徑  
+   例如：`C:\Users\你的名字\Documents\PBI\PBI_finance\mydata\`
    
    > 路徑結尾必須加上 `\` 反斜線
 
