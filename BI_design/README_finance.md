@@ -72,7 +72,7 @@ flowchart TD
 
 ### 核心 M 查詢邏輯（mydata）
 
-![mydata 查詢 M 碼](images/PBI_finance_PQ-01.png)
+![mydata 查詢 M 碼](../images/PBI_finance_PQ-01.png)
 
 ```m
 let
@@ -93,11 +93,11 @@ in
     已篩選資料列
 ```
 
-![fact_年結明細 查詢 M 碼](images/PBI_finance_PQ-02.png)
+![fact_年結明細 查詢 M 碼](../images/PBI_finance_PQ-02.png)
 
 ### 資料模型（Modeling 結果）
 
-![Power BI 資料模型 - 星狀綱要](images/PBI_finance_PQ-model-03.png)
+![Power BI 資料模型 - 星狀綱要](../images/PBI_finance_PQ-model-03.png)
 
 ---
 
@@ -136,7 +136,7 @@ flowchart TD
 
 ### 步驟 3：修改 MyDirPath 參數
 
-![管理參數 - MyDirPath 設定](images/PBI_finance_PQ-00.png)
+![管理參數 - MyDirPath 設定](../images/PBI_finance_PQ-00.png)
 
 若你的 `MyDirPath` **不是** `D:\PBI\PBI_finance\mydata\`，需要更新參數：
 
@@ -177,11 +177,11 @@ flowchart TD
 
 ### 個帳別月表
 
-![家庭共帳月表統計 - 個帳別](images/PBI_finance_report-01.png)
+![家庭共帳月表統計 - 個帳別](../images/PBI_finance_report-01.png)
 
 ### 中分類月表
 
-![家庭共帳月表統計 - 中分類](images/PBI_finance_report-02.png)
+![家庭共帳月表統計 - 中分類](../images/PBI_finance_report-02.png)
 
 ---
 
