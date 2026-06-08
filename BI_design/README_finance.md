@@ -44,7 +44,7 @@ D:\PBI\PBI_finance\
 
 ## ⚙️ ETL 架構原理
 
-本報表使用 Power Query（M 語言）實作 ETL，共有 9 個查詢，分三層：
+本報表使用 Power Query（M 語言）實作 ETL，以下為核心查詢：
 
 ### 查詢清單
 
@@ -53,16 +53,17 @@ D:\PBI\PBI_finance\
 | MyDirPath | 參數 | **資料夾路徑參數**（需依本機修改） |
 | dim_中分類 | 查詢 | 從 `家庭共帳_記帳法.xlsx` 讀取中分類對照 |
 | mydata | 查詢 | 合併 fact_accounts 資料夾所有 xlsx |
-| fact_年結明細(2025年起) | 資料表 | 轉型後的最終事實資料表 |
+| fact_年結明細(2025年起) | 載入資料表 | 轉型後的最終事實資料表（已啟用載入至模型） |
 
 ### 資料流向
 
 ```mermaid
 flowchart TD
-    A["📂 fact_accounts/\n所有 .xlsx 年結檔"] --> B["MyDirPath 參數\nFolder.Files()"]
+    A["📂 fact_accounts/\n所有 .xlsx 年結檔"] --> M
+    B["MyDirPath 參數"] --> M
     C["📄 家庭共帳_記帳法.xlsx"] --> D["dim_中分類"]
 
-    B --> M["mydata 查詢\n① 過濾隱藏檔、暫存鎖定檔（~$）與非 xlsx 檔\n② 呼叫轉換函數展開活頁簿、保留必要欄位\n③ 篩選工作表名稱開頭為「明細」\n④ 提升各工作表標題列、展開欄位\n⑤ 過濾月結年月不為 null 的資料列"]
+    M["mydata 查詢\n① 過濾隱藏檔、暫存鎖定檔（~$）與非 xlsx 檔\n② 呼叫轉換函數展開活頁簿、保留必要欄位\n③ 篩選工作表名稱開頭為「明細」\n④ 提升各工作表標題列、展開欄位\n⑤ 過濾月結年月不為 null 的資料列"]
 
     M --> F["fact_年結明細（2025年起）\n① 更正各欄位資料型別\n② 移除不必要欄位"]
     D --> F
