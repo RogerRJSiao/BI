@@ -62,7 +62,7 @@ flowchart TD
     A["📂 fact_accounts/\n所有 .xlsx 年結檔"] --> B["MyDirPath 參數\nFolder.Files()"]
     C["📄 家庭共帳_記帳法.xlsx"] --> D["dim_中分類"]
 
-    B --> M["mydata 查詢\n① 過濾隱藏檔與非 xlsx 檔\n② 呼叫轉換檔案函數展開活頁簿\n③ 篩選工作表名稱開頭為「明細」\n④ 提升標題列、展開欄位\n⑤ 過濾月結年月不為 null 的資料列"]
+    B --> M["mydata 查詢\n① 過濾隱藏檔、暫存鎖定檔（~$）與非 xlsx 檔\n② 呼叫轉換函數展開活頁簿、保留必要欄位\n③ 篩選工作表名稱開頭為「明細」\n④ 提升各工作表標題列、展開欄位\n⑤ 過濾月結年月不為 null 的資料列"]
 
     M --> F["fact_年結明細（2025年起）\n① 更正各欄位資料型別\n② 移除不必要欄位"]
     D --> F
@@ -76,18 +76,26 @@ flowchart TD
 
 ```m
 let
-    來源 = Folder.Files(MyDirPath),
-    已篩選隱藏的檔案 = Table.SelectRows(來源, each
-        [Attributes]?[Hidden] <> true and
-        Text.EndsWith([Name], ".xlsx")
+    來源 = Folder.Files(MyDirPath & "fact_accounts\"),
+    已篩選隱藏的檔案1 = Table.SelectRows(來源, each
+        [Attributes]?[Hidden]? <> true and  // 使用 ?[Hidden]? 安全導覽，避免屬性欄位不存在時報錯
+        Text.EndsWith([Name], ".xlsx") and
+        not Text.StartsWith([Name], "~$")   // 排除 Excel 暫存鎖定檔
     ),
-    叫用自訂函數 = Table.AddColumn(已篩選隱藏的檔案, "活頁簿",
+    叫用自訂函數1 = Table.AddColumn(已篩選隱藏的檔案1, "活頁簿",
         each 轉換檔案([Content])),
-    ...
+    已重新命名資料行1 = Table.RenameColumns(叫用自訂函數1, {"Name", "Source.Name"}),
+    已移除其他資料行1 = Table.SelectColumns(已重新命名資料行1, {"Source.Name", "活頁簿"}),
+    展開活頁簿 = Table.ExpandTableColumn(已移除其他資料行1, "活頁簿",
+        {"Name", "Data"}, {"工作表名稱", "工作表資料"}),
     篩選工作表 = Table.SelectRows(展開活頁簿, each
         Text.StartsWith([工作表名稱], "明細")
     ),
-    ...
+    取得欄位名稱 = Table.ColumnNames(                          // 從第一個工作表取得欄位 schema
+        Table.PromoteHeaders(篩選工作表{0}[工作表資料])),
+    處理每個工作表 = Table.TransformColumns(篩選工作表,
+        {"工作表資料", each Table.PromoteHeaders(_)}),          // 對每個工作表個別提升標題列
+    展開資料 = Table.ExpandTableColumn(處理每個工作表, "工作表資料", 取得欄位名稱),
     已篩選資料列 = Table.SelectRows(展開資料, each ([月結年月] <> null))
 in
     已篩選資料列
