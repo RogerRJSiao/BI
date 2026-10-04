@@ -6,7 +6,7 @@
 
 ## 專案列表
 
-### 案例 1. [家庭共帳 Power BI 報表](README_finance.md)
+### 案例 1. [家庭共帳 Power BI 報表](BI_design/README_finance.md)
 
 | 項目 | 說明 |
 |------|------|
@@ -16,7 +16,7 @@
 | 可能用途 | 家庭記帳追蹤、個人收支分析；架構可能移植至製造業成本報表（料/工/費的科目替換即可） |
 | 擴充方式 | 新年度只需在 `fact_accounts\` 放入新 Excel，報表自動合併 |
 
-### 案例 2. [銷售實績 Power BI 報表](README_sales.md)
+### 案例 2. [銷售實績 Power BI 報表](BI_design/README_sales.md)
 
 | 項目 | 說明 |
 |------|------|
@@ -30,7 +30,7 @@
 
 ## 教學資源
 
-### [BI 資料建模之教育訓練課程](README_BI_modeling.md)
+### [BI 資料建模之教育訓練課程](BI_design/README_BI_modeling.md)
 
 | 項目 | 說明 |
 |------|------|
