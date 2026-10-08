@@ -1,0 +1,8 @@
+# 家庭共帳原始資料與異常報告（含個人財務資料，不進版控）
+BI_preprocessing/src_finance/*.xlsx
+
+# Python 快取
+__pycache__/
+
+# 個人編輯器設定
+.vscode/
