@@ -28,8 +28,9 @@
     [warning] 認列金額超過 +8000 或低於 -2000：6 列
     [error] 認列金額的絕對值不等於金額：3 列
     檢查結果：_異常報告_202609_20261009_061317.xlsx
-3-2. 檔案：產生一份 _異常報告_<範圍>_<時間戳記>.xlsx，所有儲存格皆為文字格式，
-    - 範圍為 全部、YYYY、YYYYMM 或 YYYYMM-YYYYMM；沒有問題列時不產生檔案。
+3-2. 檔案：產生一份 _異常報告_<範圍>_<時間戳記>.xlsx，範圍為 全部、YYYY、YYYYMM 或 YYYYMM-YYYYMM
+    - 第 1 個活頁「異常報告」：問題列，所有儲存格皆為文字格式；沒有問題列時只有標題列。
+    - 第 2 個活頁「個帳別統計」：依月結年月、申報個帳彙總 01期初、02收入、03支出、04期末。
 """
 import argparse
 import re
@@ -37,11 +38,13 @@ from datetime import datetime, time
 from pathlib import Path
 
 import pandas as pd
+from openpyxl.styles import Font
 
 SRC_DIR = Path(__file__).resolve().parent
 
 COL_YYYYMM = "月結年月"
 REPORT_TAG = "_異常報告_"
+ACCOUNTS = list("ABCDE")   # 申報個帳的合法值
 
 WARN_AMOUNT_MAX = 8000    # 認列金額超過此值發出 warning
 WARN_AMOUNT_MIN = -2000   # 認列金額低於此值發出 warning
@@ -69,13 +72,59 @@ def to_text(v):
     return str(v)
 
 
-def write_issues(df, issues, path):
+def summarize_accounts(df):
     """
-    把問題列寫成 xlsx，欄位為：列數、等級、原因、原始欄位...
+    依月結年月、申報個帳彙總認列金額，每月附小計，最後一列為範圍總計。
+    04期末 = 01期初 + 02收入 + 03支出；總計的 01期初只取第一個月，避免重複加總。
+    """
+    data = pd.DataFrame({
+        COL_YYYYMM: to_number(df[COL_YYYYMM]),
+        "申報個帳": df["申報個帳"],
+        "收支": df["收支"],
+        "認列金額": to_number(df["認列金額"]),
+    }).dropna(subset=[COL_YYYYMM, "申報個帳"])
+    data[COL_YYYYMM] = data[COL_YYYYMM].astype(int)
 
-    issues 為 [(等級, 原因, 問題列遮罩), ...]，遮罩的 index 須與 df 相同，
-    列數換算成 Excel 列號（index + 2，第 1 列是標題）。
-    所有儲存格都寫成文字格式，避免 Excel 自動轉型（例如去掉開頭的 0）。
+    # 每個月都列出所有申報個帳 (ACCOUNTS 及資料中出現的其他個帳)，沒有資料的補 0
+    accounts = sorted(set(ACCOUNTS) | set(data["申報個帳"]))
+    all_rows = pd.MultiIndex.from_product([sorted(data[COL_YYYYMM].unique()), accounts],
+                                          names=[COL_YYYYMM, "申報個帳"])
+    monthly = (
+        data.pivot_table(index=[COL_YYYYMM, "申報個帳"], columns="收支", values="認列金額",
+                         aggfunc="sum", fill_value=0)
+        .reindex(index=all_rows, columns=["期初", "收", "支"], fill_value=0)
+        .set_axis(["01期初", "02收入", "03支出"], axis=1)
+    )
+    monthly["04期末"] = monthly.sum(axis=1)
+    monthly = monthly.astype(int)
+
+    parts = []
+    for ym, group in monthly.groupby(level=0):
+        subtotal = group.sum().to_frame((ym, "小計")).T
+        parts.append(pd.concat([group, subtotal]))
+    table = pd.concat(parts)
+
+    subtotals = table.xs("小計", level=1)
+    total = {
+        "01期初": subtotals["01期初"].iloc[0],
+        "02收入": subtotals["02收入"].sum(),
+        "03支出": subtotals["03支出"].sum(),
+    }
+    total["04期末"] = sum(total.values())
+    table.loc[("總計", ""), :] = total
+
+    table.index.names = [COL_YYYYMM, "申報個帳"]
+    return table.astype(int).reset_index()
+
+
+def write_report(df, issues, summary, scope, path):
+    """
+    寫出 xlsx 報告：
+    第 1 個活頁「異常報告」：問題列，欄位為：列數、等級、原因、原始欄位...
+        issues 為 [(等級, 原因, 問題列遮罩), ...]，遮罩的 index 須與 df 相同，
+        列數換算成 Excel 列號（index + 2，第 1 列是標題）。
+        所有儲存格都寫成文字格式，避免 Excel 自動轉型（例如去掉開頭的 0）。
+    第 2 個活頁「個帳別統計」：summarize_accounts 的結果，金額為數值並加上千分位。
     """
     frames = []
     for level, reason, mask in issues:
@@ -84,13 +133,29 @@ def write_issues(df, issues, path):
             pd.DataFrame({"列數": rows.index + 2, "等級": level, "原因": reason}, index=rows.index),
             rows,
         ], axis=1))
-    out = pd.concat(frames).apply(lambda col: col.map(to_text))
+    if frames:
+        out = pd.concat(frames).apply(lambda col: col.map(to_text))
+    else:
+        out = pd.DataFrame(columns=["列數", "等級", "原因", *df.columns])
 
     with pd.ExcelWriter(path, engine="openpyxl") as writer:
         out.to_excel(writer, index=False, sheet_name="異常報告", freeze_panes=(1, 0))
         for row in writer.sheets["異常報告"].iter_rows():
             for cell in row:
                 cell.number_format = "@"
+
+        summary.to_excel(writer, index=False, sheet_name="個帳別統計", startrow=2)
+        ws = writer.sheets["個帳別統計"]
+        ws["A1"] = f"家庭共帳月表統計-個帳別 ({scope})"
+        ws["A1"].font = Font(bold=True, size=16)
+        for row in ws.iter_rows(min_row=4):
+            is_total = row[1].value == "小計" or row[0].value == "總計"
+            for cell in row[2:]:
+                cell.number_format = "#,##0"
+            for cell in row:
+                cell.font = Font(bold=is_total)
+        for col in "ABCDEF":
+            ws.column_dimensions[col].width = 12
 
 
 def to_number(s):
@@ -150,7 +215,7 @@ def check_stage1(df):
     add("error", "收支不是收、支、期初", ~df["收支"].isin(["收", "支", "期初"]))
 
     #--7. 申報個帳只有 A-E
-    add("error", "申報個帳不是 A/B/C/D/E", ~df["申報個帳"].isin(list("ABCDE")))
+    add("error", f"申報個帳不是 {'/'.join(ACCOUNTS)}", ~df["申報個帳"].isin(ACCOUNTS))
 
     #--8. 認列金額超過 WARN_AMOUNT_MAX 或低於 WARN_AMOUNT_MIN
     n = to_number(df["認列金額"])
@@ -288,12 +353,11 @@ def main():
     #--把問題列資料，輸出到畫面
     for level, reason, mask in issues:
         print(f"[{level}] {reason}：{mask.sum()} 列")
-    #--把問題列資料，輸出成寫檔
-    if issues:
-        write_issues(df, issues, out_path)
-        print(f"檢查結果：{out_path.name}")
-    else:
-        print("檢查通過，沒有問題列")
+    if not issues:
+        print("檢查通過，資料中沒有問題列")
+    #--把問題列資料與個帳別統計，輸出成寫檔
+    write_report(df, issues, summarize_accounts(df), scope, out_path)
+    print(f"檢查結果：{out_path.name}")
 
 
 if __name__ == "__main__":
