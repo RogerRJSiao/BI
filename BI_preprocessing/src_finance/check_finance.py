@@ -21,7 +21,7 @@
     - 略過 ~$ 暫存檔及異常報告。
 2. 檢查資料列
     - 第一階段 (check_stage1)：重複列、月結年月、日期、數量/折價/金額、中分類、收支、申報個帳、認列金額範圍
-    - 第二階段 (check_stage2)：認列碼與月結年月/申報個帳是否一致、認列碼跳號、認列金額與金額、收支與正負號
+    - 第二階段 (check_stage2)：認列碼與月結年月/申報個帳是否一致、認列碼跳號、認列金額與金額、收支與正負號、核對處理日與月結年月
 3. 輸出
 3-1. 文字介面：顯示讀取的檔名與資料筆數、各項問題的等級/原因/列數，以及異常報告檔名
     家庭共帳_年結2026.xlsx: (119, 25)
@@ -265,6 +265,11 @@ def check_stage2(df):
     io = df["收支"]
     add("error", "收支為收或期初，認列金額卻是負數", io.isin(["收", "期初"]) & (recognized < 0))
     add("error", "收支為支，認列金額卻是正數", (io == "支") & (recognized > 0))
+
+    #--6. 核對處理日須落在月結年月的當月或前後一個月 (日期無效時已在第一階段回報，這裡略過)
+    checked = pd.to_datetime(df["核對處理日"].map(to_date))
+    month_gap = (checked.dt.year * 12 + checked.dt.month - ((yyyymm // 100) * 12 + yyyymm % 100)).abs()
+    add("error", f"核對處理日不在{COL_YYYYMM}的當月或前後一個月", month_gap > 1)
 
     return issues
 
